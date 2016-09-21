@@ -1,0 +1,204 @@
+package se.cs.lth.enduro.register.model;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.TreeMap;
+
+/**
+ * Represents a collection of drivers accessible through their unique start
+ * numbers.
+ * 
+ */
+public class DriverList implements Iterable<Driver> {
+	public static final String noClass = "Icke existerande startnummer/Ingen klass";
+	public static final String defaultClass = "GemensamKlass";
+
+	private Map<Integer, Driver> allDrivers;
+	private Map<String, TreeMap<Integer, Driver>> classMap;
+	private Map<String, TreeMap<Integer, Driver>> defaultClassMap;
+	private ArrayList<String> miscHeader;
+
+	/**
+	 * Creates a new instance of the DriverList class.
+	 */
+	public DriverList() {
+		allDrivers = new TreeMap<Integer, Driver>();
+		classMap = new HashMap<String, TreeMap<Integer, Driver>>();
+		miscHeader = new ArrayList<String>();
+	}
+
+	/**
+	 * Removed the driver with the specified start number.
+	 * 
+	 * @param startNbr
+	 *            the start number of the driver to remove.
+	 * @return the removed driver or null if no driver with the start number
+	 *         existed.
+	 */
+	public Driver remove(int startNbr) {
+		Driver driver = allDrivers.get(startNbr);
+		allDrivers.remove(startNbr);
+		classMap.get(driver.getDriverClass()).remove(startNbr);
+		return driver;
+	}
+
+	/**
+	 * Gets a map containing, for each class, a map of drivers ordered by their
+	 * start number.
+	 * 
+	 * @return the map.
+	 */
+	public Map<String, TreeMap<Integer, Driver>> getClassMap() {
+		return classMap;
+	}
+
+	/**
+	 * Gets the number of drivers in the list.
+	 * 
+	 * @return the number of drivers in the list.
+	 */
+	public int size() {
+		return allDrivers.size();
+	}
+
+	/**
+	 * Adds a driver to the list.
+	 * 
+	 * @param driver
+	 *            The driver to add.
+	 * @return true if the driver was successfully added or false if a driver
+	 *         with the same start number already existed.
+	 */
+	public boolean add(Driver driver) {
+		return add(driver, noClass);
+	}
+
+	/**
+	 * Adds a driver to the list.
+	 * 
+	 * @param driver
+	 *            the driver to add.
+	 * @param driverClass
+	 *            the class to which the driver belongs.
+	 * @return true if the driver was successfully added or false if a driver
+	 *         with the same start number already existed.
+	 */
+	public boolean add(Driver driver, String driverClass) {
+		
+		
+		if (!classMap.containsKey(driverClass)) {
+			classMap.put(driverClass, new TreeMap<Integer, Driver>());
+		}
+		
+		
+		
+		Map<Integer, Driver> driverMap = classMap.get(driverClass);
+		
+		if (!driverClass.equals(noClass)) {
+			classMap.get(noClass).remove(driver.getStartNumber());
+		}
+
+		driverMap.put(driver.getStartNumber(), driver);
+		if (allDrivers.containsKey(driver.getStartNumber())) {
+			return false;
+		}
+		allDrivers.put(driver.getStartNumber(), driver);
+		return true;
+	}
+
+	/**
+	 * Gets the driver with the specified start number.
+	 * 
+	 * @param startNumber
+	 *            The start number of the driver to find.
+	 * @return Returns the wanted driver or null if it does not exist.
+	 */
+	public Driver get(int startNumber) {
+		return allDrivers.get(startNumber);
+	}
+
+	/**
+	 * Determines whether or not a driver with the specified start number exists
+	 * in the list.
+	 * 
+	 * @param startNumber
+	 *            The start number to search for.
+	 * @return true if the driver existed.
+	 */
+	public boolean contains(int startNumber) {
+		return allDrivers.containsKey(startNumber);
+	}
+
+	@Override
+	public Iterator<Driver> iterator() {
+		return allDrivers.values().iterator();
+	}
+
+	/**
+	 * Changes the class of the specified driver.
+	 * 
+	 * @param driver
+	 *            the driver to change class for.
+	 * @param driverClass
+	 *            the new class.
+	 */
+	public void changeClass(Driver driver, String driverClass) {
+		Map<Integer, Driver> tempClassMap = getDriversInClass(driver
+				.getDriverClass());
+		tempClassMap.remove(driver.getStartNumber());
+		add(driver, driverClass);
+	}
+
+	/**
+	 * Gets a collection of all drivers in the specified class.
+	 * @param driverClass the class to check for.
+	 * @return a map containing all drivers with the specified class.
+	 */
+	public Map<Integer, Driver> getDriversInClass(String driverClass) {
+		return classMap.get(driverClass);
+	}
+
+	/**
+	 * Gets a list of all driver classes.
+	 * @return a list of all driver classes.
+	 */
+	public ArrayList<String> getDriverClasses() {
+		ArrayList driverClasses = new ArrayList(classMap.keySet());
+		Collections.sort(driverClasses);
+		Collections.reverse(driverClasses);
+		int i = driverClasses.indexOf(noClass);
+		if( i != -1 ) {
+			driverClasses.remove(i);
+			driverClasses.add(noClass);
+			
+		}
+		return driverClasses;
+	}
+
+	/**
+	 * Adds a new driver class.
+	 * @param driverClass the new driver class.
+	 */
+	public void addNewDriverClass(String driverClass) {
+		;//driverClasses.add(driverClass);
+	}
+
+	/**
+	 * Gets a header for the misc info provided in all drivers.
+	 * @return a list of column names.
+	 */
+	public ArrayList<String> getMiscHeader() {
+		return miscHeader;
+	}
+
+	/**
+	 * Sets the misc info header.
+	 * @param miscHeader the new misc header.
+	 */
+	public void setMiscHeader(ArrayList<String> miscHeader) {
+		this.miscHeader = miscHeader;
+	}
+}

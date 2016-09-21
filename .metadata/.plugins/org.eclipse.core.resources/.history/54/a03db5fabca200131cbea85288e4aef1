@@ -1,0 +1,183 @@
+package se.cs.lth.enduro.sorter;
+
+import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+
+import se.cs.lth.enduro.register.model.Driver;
+import se.cs.lth.enduro.register.model.DriverList;
+import se.cs.lth.enduro.register.model.Time;
+import se.cs.lth.enduro.sorter.configuration.Configuration;
+import se.cs.lth.enduro.sorter.configuration.ConfigurationException;
+
+public class StageSorter extends Sorter {
+
+	/**
+	 * Creates a new stage race sorter.
+	 * 
+	 * @param dl
+	 *            the drivers to sort.
+	 * @param conf
+	 *            the configuration to use.
+	 * @throws ConfigurationException
+	 *             if the configuration could not be loaded or a setting was
+	 *             missing.
+	 */
+	public StageSorter(DriverList dl, Configuration configuration) {
+		super(dl, configuration);
+	}
+
+	@Override
+	protected void printSortHeader(PrintWriter writer, String driverClass)
+			throws ConfigurationException {
+		ArrayList<String> header = new ArrayList<String>();
+		if (sortingMethod == SortingMethod.SORT_BY_RESULT) {
+			header.add("Plac");
+		}
+		int stages = configuration.multiStage().nbrOfStages(driverClass);
+		header.add("StartNr");
+		header.add("Namn");
+		header.addAll(dl.getMiscHeader());
+		header.add("Totaltid");
+		String temp;
+		header.add("#Etapper");
+		for (int i = 1; i <= stages; i++) {
+			if (configuration.multiStage().getSpecialStageFactor(i) != 1) {
+				temp = "*"
+						+ configuration.multiStage().getSpecialStageFactor(i);
+			} else {
+				temp = "";
+			}
+			header.add("Etapp" + i + temp);
+		}
+		if (sortingMethod != SortingMethod.SORT_BY_RESULT) {
+			for (int i = 1; i <= stages; i++) {
+				header.add("Start" + i);
+				header.add("Mål" + i);
+			}
+		}
+
+		writer.println(formatter.printHeader(header.toArray(new String[header
+				.size()])));
+	}
+
+	@Override
+	protected void printDriver(PrintWriter writer, Driver d, int index)
+			throws ConfigurationException {
+
+		ArrayList<String> row = new ArrayList<String>();
+		int stages = configuration.multiStage().nbrOfStages(d.getDriverClass());
+		if (sortingMethod == SortingMethod.SORT_BY_RESULT) {
+			if (allowedTime(d)) {
+				row.add(Integer.toString(index + 1));
+			} else {
+				row.add("");
+			}
+
+		}
+
+		ArrayList<String> info = d.getMiscInfo();
+		row.addAll(Arrays.asList(new String[] { "" + d.getStartNumber(),
+				d.getName() }));
+		for (int i = 0; i < dl.getMiscHeader().size(); i++) {
+			if (i < info.size()) {
+				row.add(info.get(i));
+			} else {
+				row.add("");
+			}
+
+		}
+		row.add(calculateTotalTime(d).toString());
+		row.add("" + stages);
+		int[] impossibleTimes = configuration.multiStage().getImpossibleTimes();
+		ArrayList<String> errors = new ArrayList<String>();
+		for (int i = 0; i < stages; i++) {
+			if (calculateStageTime(d, i).getSeconds() < impossibleTimes[i]) {
+				errors.add("Omöjlig etapptid " + (i + 1) + "?");
+			}
+			row.add(calculateStageTime(d, i).toString());
+		}
+		if (sortingMethod != SortingMethod.SORT_BY_RESULT) {
+			for (int i = 0; i < stages; i++) {
+				row.add(d.getStartTime(i).toString());
+				row.add(d.getGoalTime(i).toString());
+			}
+		}
+		if (errors.size() > 0)
+			row.addAll(errors);
+
+		String s = formatter.printRow(row.toArray(new String[row.size()]));
+		writer.println(s);
+	}
+
+	private boolean allowedTime(Driver o1) throws ConfigurationException {
+		int times[] = null;
+		try {
+			times = configuration.multiStage().getImpossibleTimes();
+		} catch (ConfigurationException e) {
+			e.printStackTrace();
+			return false;
+		}
+
+		for (int i = 0; i < times.length; i++) {
+			if (calculateStageTime(o1, i).compareTo(new Time(times[i])) < 0) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	@Override
+	protected void sortByResult(Driver[] drivers) {
+		Arrays.sort(drivers, new Comparator<Driver>() {
+
+			@Override
+			public int compare(Driver o1, Driver o2) {
+
+				try {
+					if (allowedTime(o1)) {
+						return 1;
+					}
+				} catch (ConfigurationException e) {
+					e.printStackTrace();
+				}
+				try {
+					if (allowedTime(o2)) {
+						return -1;
+					}
+				} catch (ConfigurationException e) {
+					e.printStackTrace();
+				}
+				int compVal = 0;
+				try {
+					compVal = calculateTotalTime(o1).compareTo(
+							calculateTotalTime(o2));
+				} catch (ConfigurationException e) {
+					e.printStackTrace();
+				}
+				return compVal;
+			}
+		});
+	}
+
+	private Time calculateStageTime(Driver d, int index)
+			throws ConfigurationException {
+		System.out.println(index);
+		return Time.differenceWithFactor(d.getStartTime(index), d
+				.getGoalTime(index), configuration.multiStage()
+				.getSpecialStageFactor(index + 1));
+	}
+
+	private Time calculateTotalTime(Driver d) throws ConfigurationException {
+		int total = 0;
+		// TODO: Handle errors when # of start or goal times are < stages
+		for (int i = 0; i < d.getStartTimeSize() && i < d.getGoalTimeSize(); i++)
+			total += Time.differenceWithFactor(d.getStartTime(i),
+					d.getGoalTime(i),
+					configuration.multiStage().getSpecialStageFactor(i + 1))
+					.getSeconds();
+		return new Time(total);
+	}
+
+}

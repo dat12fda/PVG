@@ -1,0 +1,219 @@
+package se.cs.lth.enduro.sorter;
+
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.PrintWriter;
+import java.io.UnsupportedEncodingException;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.TreeMap;
+
+import se.cs.lth.enduro.formatter.CSVFormatter;
+import se.cs.lth.enduro.formatter.HTMLFormatter;
+import se.cs.lth.enduro.formatter.ResultFormatter;
+import se.cs.lth.enduro.register.model.Driver;
+import se.cs.lth.enduro.register.model.DriverList;
+import se.cs.lth.enduro.sorter.configuration.Configuration;
+import se.cs.lth.enduro.sorter.configuration.ConfigurationException;
+import se.cs.lth.enduro.sorter.configuration.Configuration.Formats;
+
+/**
+ * Represents a generic sorter used for sorting drivers.
+ * 
+ */
+public abstract class Sorter {
+	protected DriverList dl;
+	protected HashMap<String, Driver[]> driverClasses;
+	protected SortingMethod sortingMethod;
+	protected ResultFormatter formatter;
+	protected Configuration configuration;
+
+	/**
+	 * Creates a new sorter.
+	 * 
+	 * @param dl
+	 *            the drivers to sort.
+	 * @param conf
+	 *            the configuration to use.
+	 * @throws ConfigurationException
+	 *             if the configuration could not be loaded or a setting was
+	 *             missing.
+	 */
+	public Sorter(DriverList dl, Configuration configuration) {
+		this.dl = dl;
+		this.sortingMethod = SortingMethod.SORT_BY_STARTNBR;
+		driverClasses = new HashMap<String, Driver[]>();
+		this.configuration = configuration;
+
+		Map<String, TreeMap<Integer, Driver>> classMap = dl.getClassMap();
+
+		for (String driverClass : classMap.keySet()) {
+			Driver[] drivers = new Driver[classMap.get(driverClass).values()
+					.size()];
+			driverClasses.put(driverClass, classMap.get(driverClass).values()
+					.toArray(drivers));
+		}
+		initializeFormatter();
+
+	}
+
+	private void initializeFormatter() {
+		try {
+			Formats format = configuration.getFormatter();
+			switch (format) {
+
+			case CSV:
+				formatter = new CSVFormatter();
+				break;
+
+			case HTML:
+				formatter = new HTMLFormatter();
+				break;
+			}
+		} catch (ConfigurationException e) {
+			formatter = new CSVFormatter();
+		}
+	}
+
+	/**
+	 * Gets the sorting method.
+	 * 
+	 * @return the sorting method.
+	 */
+	public SortingMethod getSortingMethod() {
+		return sortingMethod;
+	}
+
+	/**
+	 * Sets the sorting method in the sorter.
+	 * 
+	 * @param sortingMethod
+	 *            the new sorting method.
+	 */
+	public void setSortingMethod(SortingMethod sortingMethod) {
+		this.sortingMethod = sortingMethod;
+	}
+
+	/**
+	 * Prints the entire result file.
+	 * 
+	 * @param f
+	 *            the output file.
+	 * @throws FileNotFoundException
+	 *             if the output file could not be created or written to.
+	 * @throws UnsupportedEncodingException
+	 *             if the used encoding was not supported.
+	 */
+	public void printResult(File f) throws FileNotFoundException,
+			UnsupportedEncodingException, ConfigurationException {
+		PrintWriter writer = new PrintWriter(f, "UTF-8");
+		writer.print(formatter.printBefore());
+		for (String driverClass : dl.getDriverClasses()) {
+
+			Driver[] drivers = driverClasses.get(driverClass);
+			if (sortingMethod == SortingMethod.SORT_BY_RESULT) {
+				sortByResult(drivers);
+			} else {
+				sortByStartNbr(drivers);
+			}
+
+			if (!(driverClass.equals(DriverList.noClass) && drivers.length == 0)) {
+
+				printHeader(writer, driverClass);
+				for (int i = 0; i < drivers.length; i++) {
+					printDriver(writer, drivers[i], i);
+				}
+			}
+		}
+		writer.print(formatter.printAfter());
+		writer.flush();
+		writer.close();
+	}
+	
+	/**
+	 * Convenience method for Formatter.getFileExtension. Gets the preferred file extension for results sorted with this sorter.
+	 * @return the file extension, including the dot.
+	 */
+	public String getFileExtension(){
+		return formatter.getFileExtension();
+	}
+
+	/**
+	 * Prints a class name, if used, followed by the header with column names.
+	 * 
+	 * @param writer
+	 *            the writer to be used.
+	 * @param driverClass
+	 *            the driver class the drivers belong to.
+	 */
+	protected void printHeader(PrintWriter writer, String driverClass)
+			throws ConfigurationException {
+
+		writer.println(formatter.printClass(driverClass));
+
+		printSortHeader(writer, driverClass);
+	}
+
+	/**
+	 * Prints a header.
+	 * 
+	 * @param writer
+	 *            the writer to be used.
+	 * @param driverClass
+	 *            the driver class the drivers belong to.
+	 */
+	protected abstract void printSortHeader(PrintWriter writer,
+			String driverClass) throws ConfigurationException;
+
+	/**
+	 * Prints the relevant data for the data.
+	 * 
+	 * @param writer
+	 *            the writer to be used.
+	 * @param d
+	 *            the driver whose data will be printed.
+	 * @param index
+	 *            the placement of the driver.
+	 */
+	protected abstract void printDriver(PrintWriter writer, Driver d, int index)
+			throws ConfigurationException;
+
+	/**
+	 * Sorts the vector drivers with the Comparator comparator.
+	 * 
+	 * @param drivers
+	 *            the vector of elements that should be sorted.
+	 * @param comparator
+	 *            the comparator that should be used.
+	 */
+	protected void sort(Driver[] drivers, Comparator<Driver> comparator) {
+		Arrays.sort(drivers, comparator);
+	}
+
+	/**
+	 * Sorts the vector drivers by start number.
+	 * 
+	 * @param drivers
+	 *            the vector that should be sorted.
+	 */
+	protected void sortByStartNbr(Driver[] drivers) {
+		sort(drivers, new Comparator<Driver>() {
+
+			@Override
+			public int compare(Driver o1, Driver o2) {
+				return o1.getStartNumber() - o2.getStartNumber();
+			}
+
+		});
+	}
+
+	/**
+	 * Sorts the vector drivers by result.
+	 * 
+	 * @param drivers
+	 *            the vector that should be sorted.
+	 */
+	protected abstract void sortByResult(Driver[] drivers);
+}

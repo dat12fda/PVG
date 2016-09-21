@@ -1,0 +1,36 @@
+package se.cs.lth.enduro.tests;
+
+import static org.junit.Assert.*;
+
+import org.junit.Test;
+
+import se.cs.lth.enduro.register.model.Time;
+
+public class TestTime {
+
+	@Test
+	public void testParse() {
+		Time t = Time.parseTime("12.00.00");
+		assertEquals(t.getSeconds(), 12 * 3600);
+		t = Time.parseTime("12.10.54");
+		assertEquals(t.getSeconds(), 12 * 3600 + 10 * 60 + 54);
+		assertFalse(t.equals(Time.parseTime("12.00.00")));
+	}
+
+	@Test
+	public void testToString() {
+		Time t = new Time(12 * 3600);
+		assertEquals("12.00.00", t.toString());
+		t = new Time(12 * 3600 + 10 * 60 + 54);
+		assertEquals("12.10.54", t.toString());
+	}
+	
+	@Test
+	public void testNegativeDifference() {
+		Time t1 = Time.parseTime("22.30.06");
+		Time t2 = Time.parseTime("01.30.05");
+		Time diff = Time.difference(t1, t2);
+		assertEquals(diff,Time.parseTime("02.59.59"));
+	}
+}
+

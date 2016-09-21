@@ -1,0 +1,239 @@
+package se.cs.lth.enduro.sorter;
+
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.PrintWriter;
+import java.io.UnsupportedEncodingException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Map;
+
+import se.cs.lth.enduro.register.model.Driver;
+import se.cs.lth.enduro.register.model.DriverList;
+import se.cs.lth.enduro.register.model.Time;
+import se.cs.lth.enduro.sorter.configuration.Configuration;
+import se.cs.lth.enduro.sorter.configuration.ConfigurationException;
+
+/**
+ * Represents a sorter for lap races.
+ * 
+ */
+public class LapRaceSorter extends Sorter {
+
+	private Map<String, Integer> maxLaps;
+	private Time maxTime;
+	private Time impossibleLapTime;
+	private DriverList dl;
+
+	/**
+	 * Creates a new lap race sorter.
+	 * 
+	 * @param dl
+	 *            the drivers to sort.
+	 * @param conf
+	 *            the configuration to use.
+	 * @throws ConfigurationException
+	 *             if the configuration could not be loaded or a setting was
+	 *             missing.
+	 */
+	public LapRaceSorter(DriverList dl, Configuration conf)
+			throws ConfigurationException {
+		super(dl, conf);
+		this.dl = dl;
+		maxLaps = new HashMap<String, Integer>();
+		impossibleLapTime = new Time(conf.lapRace().getImpossibleTime());
+		maxTime = new Time(conf.lapRace().getTotalTime());
+	}
+
+	@Override
+	public void printResult(File f) throws FileNotFoundException,
+			UnsupportedEncodingException, ConfigurationException {
+		for (String driverClass : dl.getDriverClasses()) {
+			maxLaps.put(driverClass, 0);
+			for (Driver d : dl.getClassMap().get(driverClass).values()) {
+				int laps = d.getGoalTimeSize();
+				if (laps > maxLaps.get(driverClass)) {
+					maxLaps.put(driverClass, laps);
+				}
+			}
+		}
+		super.printResult(f);
+	}
+
+	@Override
+	protected void printSortHeader(PrintWriter writer, String driverClass) {
+		ArrayList<String> header = new ArrayList<String>();
+
+		if (sortingMethod == SortingMethod.SORT_BY_RESULT) {
+			header.add("Plac");
+		}
+		header.add("StartNr");
+		header.add("Namn");
+		header.addAll(dl.getMiscHeader());
+		header.add("#Varv");
+		header.add("Totaltid");
+
+		int laps = 0;
+		if (maxLaps.get(driverClass) != null) {
+			laps = maxLaps.get(driverClass);
+		}
+
+		for (int i = 1; i <= laps; i++) {
+			header.add("Varv" + i);
+		}
+
+		if (sortingMethod != SortingMethod.SORT_BY_RESULT) {
+			header.add("Start");
+			for (int i = 1; i < laps; i++) {
+				header.add("Varvning" + i);
+			}
+			header.add("Mål");
+		}
+		writer.println(formatter.printHeader(header.toArray(new String[header
+				.size()])));
+	}
+
+	@Override
+	protected void printDriver(PrintWriter writer, Driver d, int index) {
+		ArrayList<String> row = new ArrayList<String>();
+		if (sortingMethod == SortingMethod.SORT_BY_RESULT) {
+			if (calculateTotalTime(d).compareTo(maxTime) > 0) {
+				row.add(Integer.toString(index + 1));
+			} else {
+				row.add("");
+			}
+		}
+		row.add(Integer.toString(d.getStartNumber()));
+		row.add(d.getName());
+		for (int i = 0; i < dl.getMiscHeader().size(); i++) {
+			if (i < d.getMiscInfo().size()) {
+				row.add(d.getMiscInfo().get(i));
+			} else {
+				row.add("");
+			}
+		}
+		row.add(lapsString(d));
+		row.add(totalTimeString(d));
+		finishRow(d, row);
+		writer.println(formatter.printRow(row.toArray(new String[row.size()])));
+	}
+
+	private void finishRow(Driver d, ArrayList<String> row) {
+		boolean impossLap = false;
+		for (int i = 1; i <= maxLaps.get(d.getDriverClass()); i++) {
+			Time lapTime = calculateLapTime(d, i);
+			if (lapTime == null) {
+				row.add("");
+			} else {
+				row.add(lapTime.toString());
+				if (lapTime.compareTo(impossibleLapTime) < 1)
+					impossLap = true;
+			}
+		}
+		Time[] goalTimes = d.getGoalTimes();
+		if (sortingMethod != SortingMethod.SORT_BY_RESULT) {
+			
+			row.add(startTimeString(d));
+			for (int i = 0; i < goalTimes.length; i++) {
+				row.add(goalTimes[i].toString());
+			}
+			for (int i = goalTimes.length; i < maxLaps.get(d.getDriverClass()); i++) {
+				if (goalTimes.length != 0) {
+					row.add(row.size() - 1, "");
+				} else {
+					row.add("");
+				}
+			}
+		}
+		
+		checkForErrors(d, row, impossLap);
+	}
+
+	private void checkForErrors(Driver d, ArrayList<String> row,
+			boolean impossLap) {
+		Time[] goalTimes = d.getGoalTimes();
+		if (goalTimes.length == 0) {
+			row.set(row.size() - 1, "Slut?");
+		}
+		if (impossLap == true) {
+			row.add("Omöjlig varvtid?");
+			impossLap = false;
+		}
+		if (d.getStartTimeSize() > 1) {
+			String moreTimes = "Flera starttider?";
+			for (int i = 1; i < d.getStartTimeSize(); i++) {
+				moreTimes += " " + d.getStartTimes()[i];
+			}
+			row.add(moreTimes);
+		}
+	}
+
+	@Override
+	public void sortByResult(Driver[] drivers) {
+		Arrays.sort(drivers, new Comparator<Driver>() {
+
+			@Override
+			public int compare(Driver o1, Driver o2) {
+				System.out.println(o2);
+				if (calculateTotalTime(o1).compareTo(maxTime) < 0) {
+					return 1;
+				}
+				if (calculateTotalTime(o2).compareTo(maxTime) < 0) {
+					return -1;
+				}
+				if (o1.getGoalTimeSize() == o2.getGoalTimeSize()) {
+					return calculateTotalTime(o1).compareTo(
+							calculateTotalTime(o2));
+				}
+
+				return o2.getGoalTimeSize() - o1.getGoalTimeSize();
+
+			}
+
+		});
+	}
+
+	private String totalTimeString(Driver d) {
+		Time totalTime = calculateTotalTime(d);
+		return totalTime == null ? "--.--.--" : totalTime.toString();
+	}
+
+	private String startTimeString(Driver d) {
+		if (d.getStartTimeSize() == 0) {
+			return "Start?";
+		}
+		return d.getStartTime(0).toString();
+	}
+
+	private String lapsString(Driver d) {
+		return Integer
+				.toString(d.getStartTimeSize() == 0 ? d.getGoalTimeSize() - 1
+						: d.getGoalTimeSize());
+	}
+
+	private Time calculateLapTime(Driver d, int lap) {
+		if (d.getGoalTimeSize() < lap
+				|| (d.getStartTimeSize() == 0 && lap == 1))
+			return null;
+		Time start;
+		if (lap == 1) {
+			start = d.getStartTime(0);
+		} else {
+			start = d.getGoalTime(lap - 2);
+		}
+
+		Time goal = d.getGoalTime(lap - 1);
+		return Time.difference(start, goal);
+	}
+
+	private Time calculateTotalTime(Driver d) {
+		if (d.getStartTimeSize() == 0 || d.getGoalTimeSize() == 0) {
+			System.out.println("bäver");
+			return null;
+		}
+		return Time.difference(d.getStartTime(0),
+				d.getGoalTime(d.getGoalTimeSize() - 1));
+	}
+}

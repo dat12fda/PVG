@@ -1,0 +1,9 @@
+package se.cs.lth.enduro.tests;
+
+import org.junit.runner.RunWith;
+import org.junit.extensions.cpsuite.ClasspathSuite;
+import org.junit.extensions.cpsuite.ClasspathSuite.*;
+
+@RunWith(ClasspathSuite.class)
+@ClassnameFilters({".*tests.*", "!.*AllTests"})
+public final class AllTests{}

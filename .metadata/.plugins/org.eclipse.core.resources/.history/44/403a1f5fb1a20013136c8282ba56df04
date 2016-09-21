@@ -1,0 +1,17 @@
+GemensamKlass
+Plac; StartNr; Namn; Klubb; MC; Totaltid; StartTider; Måltider
+<<<<<<< HEAD
+1; 2; Bengt Bsson; 00.21.00; 12.00.00; 12.21.00
+2; 102; David Dsson; 00.23.00; 12.00.00; 12.23.00; Flera måltider? 13.12.07
+3; 1; Anders Asson; 00.55.00; 12.00.00; 12.55.00
+4; 101; Chris Csson; --.--.--; Start?; 13.05.06
+Icke existerande startnummer/Ingen klass
+Plac; StartNr; Namn; Klubb; MC; Totaltid; StartTider; Måltider
+1; 103; ; 00.24.00; 12.00.00; 12.24.00
+=======
+1; 2; Bengt Bsson; FMCK Bstad; BTM; 00.21.00; 12.00.00; 12.21.00
+2; 102; David Dsson; Dstad MCK; DTM; 00.23.00; 12.00.00; 12.23.00; Flera måltider? 13.12.07
+3; 103; ; 00.24.00; 12.00.00; 12.24.00
+4; 1; Anders Asson; FMCK Astad; ATM; 00.55.00; 12.00.00; 12.55.00
+5; 101; Chris Csson; Cstad MCK; CTM; --.--.--; Start?; 13.05.06
+>>>>>>> cd45af9269fe99184045b1867c5c5a62345dc56b

@@ -1,0 +1,64 @@
+package se.cs.lth.enduro.tests.acceptance;
+
+import static org.junit.Assert.*;
+
+import java.io.File;
+
+import org.junit.Test;
+
+import se.cs.lth.enduro.register.logic.IOHandler;
+import se.cs.lth.enduro.register.model.DriverList;
+import se.cs.lth.enduro.sorter.MarathonSorter;
+import se.cs.lth.enduro.sorter.SortingMethod;
+import se.cs.lth.enduro.sorter.StageSorter;
+import se.cs.lth.enduro.sorter.configuration.Configuration;
+import se.cs.lth.enduro.sorter.configuration.ConfigurationException;
+import se.cs.lth.enduro.tests.TestingEnvironment;
+
+public class AcceptanceTest19 {
+
+	File startTimes = new File("./testfiles/Acceptanstester2013/Iteration3/acceptanstest19a/starttider1.txt");
+	File nameFile = new File("./testfiles/Acceptanstester2013/Iteration3/acceptanstest19a/namnfil.txt");
+	File goalTimes = new File("./testfiles/Acceptanstester2013/Iteration3/acceptanstest19a/maltider1.txt");
+	File results = new File("./testfiles/Acceptanstester2013/Iteration3/acceptanstest19a/resultat.txt");
+	File temp = new File("./testfiles/Acceptanstester2013/Iteration3/acceptanstest19a/temporary_results.tmp");
+	String confFile = "./testfiles/Acceptanstester2013/Iteration3/acceptanstest19a/configurationTestFileA19a.txt";
+
+	@Test
+	public void test() {
+		DriverList dl = new DriverList();
+		IOHandler ioHandler = new IOHandler(dl);
+		ioHandler.readStart(startTimes);
+		ioHandler.readGoal(goalTimes);
+		ioHandler.readRegistrations(nameFile);
+		
+		try {
+			StageSorter sm = new StageSorter(dl, new Configuration(confFile));
+			sm.printResult(temp);
+		} catch (Exception e) {
+			e.printStackTrace();
+			fail("shouldn't throw an exception: " + e);
+		}
+		
+		CompareFiles.CompareTwoFiles(true, results, temp);
+	}
+	@Test
+	public void sortbyResultest() { //Detta borde inte gå igenom då soerterad med resultat inte är implementerad.
+		DriverList dl = new DriverList();
+		IOHandler ioHandler = new IOHandler(dl);
+		ioHandler.readStart(startTimes);
+		ioHandler.readGoal(goalTimes);
+		ioHandler.readRegistrations(nameFile);
+		
+		try {
+			StageSorter sm = new StageSorter(dl, new Configuration(confFile));
+			sm.setSortingMethod(SortingMethod.SORT_BY_RESULT);
+			sm.printResult(temp);
+		} catch (Exception e) {
+			e.printStackTrace();
+			fail("shouldn't throw an exception: " + e);
+		}
+		
+		CompareFiles.CompareTwoFiles(true, results, temp);
+	}
+}

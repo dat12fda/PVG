@@ -1,0 +1,143 @@
+package se.cs.lth.enduro.sorter;
+
+import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+
+import se.cs.lth.enduro.register.model.Driver;
+import se.cs.lth.enduro.register.model.DriverList;
+import se.cs.lth.enduro.register.model.Time;
+import se.cs.lth.enduro.sorter.configuration.Configuration;
+import se.cs.lth.enduro.sorter.configuration.ConfigurationException;
+
+/**
+ * Represets a sorter for marathon races.
+ *
+ */
+public class MarathonSorter extends Sorter {
+	private DriverList dl;
+	private Time impossibleTimeLimit;
+
+	/**
+	 * Creates a new marathon sorter.
+	 * @param dl the drivers to sort.
+	 * @param conf the configuration to use.
+	 * @throws ConfigurationException if the configuration could not be loaded or a setting was missing.
+	 */
+	public MarathonSorter(DriverList dl, Configuration conf) throws ConfigurationException {
+		super(dl, conf);
+		this.dl = dl;
+		impossibleTimeLimit = new Time(configuration.marathon().getImpossibleTime());
+	}
+
+	@Override
+	protected void printSortHeader(PrintWriter writer, String driverClass) {
+
+		ArrayList<String> header = new ArrayList<String>();
+		if (sortingMethod == SortingMethod.SORT_BY_RESULT) {
+			header.add("Plac");
+		}
+		header.add("StartNr");
+		header.add("Namn");
+		header.addAll(dl.getMiscHeader());
+		header.add("Totaltid");
+		header.add("StartTider");
+		header.add("Måltider");
+		writer.println(formatter.printHeader(header.toArray(new String[header
+				.size()])));
+	}
+
+	private void checkForErrors(Driver d, ArrayList<String> row) {
+		StringBuilder errorMessages = new StringBuilder();
+		Time[] goalTimes = d.getGoalTimes();
+		Time[] startTimes = d.getStartTimes();
+		if (goalTimes.length > 1) {
+			errorMessages.append("Flera måltider? ");
+			for (int i = 1; i < goalTimes.length; i++) {
+				errorMessages.append(goalTimes[i]);
+				errorMessages.append(" ");
+			}
+		}
+		if (startTimes.length > 1) {
+			errorMessages.append("Flera starttider? ");
+			for (int i = 1; i < startTimes.length; i++) {
+				errorMessages.append(startTimes[i]);
+				errorMessages.append(" ");
+			}
+		}
+
+		Time totalTime = calculateTotalTime(d);
+		if (totalTime != null && totalTime.compareTo(impossibleTimeLimit) < 0) {
+			errorMessages.append("Omöjlig Totaltid?");
+		}
+
+		if (errorMessages.length() > 0) {
+			row.add(errorMessages.toString().trim());
+		}
+	}
+
+	@Override
+	protected void printDriver(PrintWriter writer, Driver d, int index) {
+		ArrayList<String> row = new ArrayList<String>();
+
+		if (sortingMethod == SortingMethod.SORT_BY_RESULT) {
+			row.add(Integer.toString(index + 1));
+		}
+		row.add(Integer.toString(d.getStartNumber()));
+		row.add(d.getName());
+		row.addAll(d.getMiscInfo());
+		row.add(totalTimeString(d));
+		row.add(startTimeString(d));
+		row.add(goalTimeString(d));
+		checkForErrors(d, row);
+		writer.println(formatter.printRow(row.toArray(new String[row.size()])));
+
+	}
+
+	@Override
+	public void sortByResult(Driver[] drivers) {
+		Arrays.sort(drivers, new Comparator<Driver>() {
+
+			@Override
+			public int compare(Driver o1, Driver o2) {
+				Time t1 = calculateTotalTime(o1);
+				Time t2 = calculateTotalTime(o2);
+				if (t1 == null) {
+					return 1;
+				} else if (t2 == null) {
+					return -1;
+				} else {
+					return t1.compareTo(t2);
+				}
+			}
+
+		});
+	}
+
+	private String totalTimeString(Driver d) {
+		Time totalTime = calculateTotalTime(d);
+		return totalTime == null ? "--.--.--" : totalTime.toString();
+	}
+
+	private String startTimeString(Driver d) {
+		if (d.getStartTimeSize() == 0) {
+			return "Start?";
+		}
+		return d.getStartTime(0).toString();
+	}
+
+	private String goalTimeString(Driver d) {
+		if (d.getGoalTimeSize() == 0) {
+			return "Slut?";
+		}
+		return d.getGoalTime(0).toString();
+	}
+
+	private Time calculateTotalTime(Driver d) {
+		if (d.getStartTimeSize() == 0 || d.getGoalTimeSize() == 0) {
+			return null;
+		}
+		return Time.difference(d.getStartTime(0), d.getGoalTime(0));
+	}
+}

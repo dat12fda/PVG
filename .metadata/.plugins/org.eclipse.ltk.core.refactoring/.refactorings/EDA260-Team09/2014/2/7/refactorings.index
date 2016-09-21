@@ -1,0 +1,8 @@
+1392019001517	Convert local variable 'maxLaps' to field
+1392019791566	Rename field 'lrsResultat'
+1392025951642	Move compilation unit
+1392034197509	Delete element
+1392039215082	Move compilation unit
+1392039229758	Rename type 'TestWrongTimeData'
+1392041705519	Encapsulate field 'miscInfo'
+1392042736294	Encapsulate field 'miscHeader'

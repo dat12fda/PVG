@@ -1,0 +1,61 @@
+package se.cs.lth.enduro.tests.acceptance;
+
+import static org.junit.Assert.*;
+
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.UnsupportedEncodingException;
+
+import org.junit.Before;
+import org.junit.Test;
+
+import se.cs.lth.enduro.register.logic.IOHandler;
+import se.cs.lth.enduro.register.model.DriverList;
+import se.cs.lth.enduro.sorter.LapRaceSorter;
+import se.cs.lth.enduro.sorter.SortingMethod;
+import se.cs.lth.enduro.sorter.configuration.ConfigurationException;
+import se.cs.lth.enduro.tests.TestingEnvironment;
+
+public class AcceptanceTest15 {
+	DriverList dl;
+	IOHandler ioHandler;
+	LapRaceSorter lrs;
+	
+	File startTimes = new File("./testfiles/Acceptanstester2013/Iteration2/acceptanstest15/starttider.txt");
+	File goalTimes = new File("./testfiles/Acceptanstester2013/Iteration2/acceptanstest15/maltider.txt");
+	File registrations = new File(
+			"./testfiles/Acceptanstester2013/Iteration2/acceptanstest15/namnfil.txt");
+	File resultat = new File("./testfiles/Acceptanstester2013/Iteration2/acceptanstest15/resultat.txt");
+	File lapRaceSorterResultat = new File("./testfiles/testTmp/lrsResultat.txt");
+	
+	@Before
+	public void setup() {
+		dl = new DriverList();
+		ioHandler = new IOHandler(dl);
+		
+		ioHandler.readStart(startTimes);
+		ioHandler.readGoal(goalTimes);
+		ioHandler.readRegistrations(registrations);
+		
+		
+	}
+	@Test
+	public void compareEditedResult() {
+		try {
+			lrs = new LapRaceSorter(dl, TestingEnvironment.getStandardTestConfigurationFile());
+			lrs.setSortingMethod(SortingMethod.SORT_BY_RESULT);
+			lrs.printResult(lapRaceSorterResultat);
+		} catch (ConfigurationException e1) {
+			// TODO Auto-generated catch block
+			fail("error when creating the configuration file");
+		}catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (UnsupportedEncodingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		CompareFiles.CompareTwoFiles(false, resultat, lapRaceSorterResultat);
+	}
+
+}
